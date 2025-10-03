@@ -2,21 +2,21 @@
   "version": 2,
   "builds": [
     {
-      "src": "server-ably.js",
+      "src": "server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "server-ably.js"
+      "dest": "server.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
   },
   "functions": {
-    "server-ably.js": {
+    "server.js": {
       "maxDuration": 30
     }
   }
