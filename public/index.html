@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1~9 카드 대전</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #e0e0e0;
+        }
+
+        .container {
+            background: #1e1e1e;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            min-height: 600px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+
+        .game-section {
+            display: none;
+        }
+
+        .game-section.active {
+            display: block;
+        }
+
+        .lobby {
+            text-align: center;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #444;
+            font-size: 16px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .input-group input::placeholder {
+            color: #888;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .room-info {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #00d4ff;
+            border: 1px solid #444;
+        }
+
+        .room-code {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00d4ff;
+            text-align: center;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+
+        .players-list {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .player-card {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            padding: 15px;
+            text-align: center;
+            min-width: 150px;
+            transition: border-color 0.3s;
+        }
+
+        .player-card.active {
+            border-color: #00d4ff;
+            background: #1a3a4a;
+        }
+
+        .player-card h3 {
+            color: #e0e0e0;
+            margin-bottom: 5px;
+        }
+
+        .player-card .status {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .game-board {
+            margin: 20px 0;
+        }
+
+        .round-info {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+        }
+
+        .round-info h2 {
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .scores {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .score-card {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            padding: 20px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .score-card.winner {
+            border-color: #00ff88;
+            background: #1a4a2a;
+        }
+
+        .score-card h3 {
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .score-card .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .cards-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .card {
+            width: 60px;
+            height: 80px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: #00d4ff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .card.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #1a1a1a;
+        }
+
+        .card.selected {
+            border-color: #00d4ff;
+            background: #1a3a4a;
+            transform: translateY(-2px);
+        }
+
+        .play-area {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+        }
+
+        .play-slot {
+            width: 80px;
+            height: 100px;
+            border: 2px dashed #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            color: #888;
+        }
+
+        .play-slot.filled {
+            border-style: solid;
+            border-color: #00d4ff;
+            background: #1a3a4a;
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+
+        .result-area {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+        }
+
+        .result-area h3 {
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .result-area .winner {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .result-area .reason {
+            color: #b0b0b0;
+            margin-top: 5px;
+        }
+
+        .game-history {
+            margin: 20px 0;
+        }
+
+        .game-history h3 {
+            color: #e0e0e0;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            margin: 5px 0;
+        }
+
+        .history-item .round {
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+
+        .history-item .cards {
+            color: #b0b0b0;
+        }
+
+        .history-item .winner {
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .message {
+            padding: 10px 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .message.info {
+            background: #1a3a4a;
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+
+        .message.success {
+            background: #1a4a2a;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+
+        .message.error {
+            background: #4a1a1a;
+            color: #ff6666;
+            border: 1px solid #ff6666;
+        }
+
+        .loading {
+            text-align: center;
+            color: #b0b0b0;
+            font-style: italic;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .players-list {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .scores {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .play-area {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 1~9 카드 대전</h1>
+            <p>온라인 멀티플레이어 카드 게임</p>
+        </div>
+
+        <!-- 로비 화면 -->
+        <div id="lobby" class="game-section active">
+            <div class="lobby">
+                <!-- 초기 선택 화면 -->
+                <div id="initialSelection">
+                    <h3 style="margin-bottom: 30px; color: #e0e0e0;">게임을 시작하세요!</h3>
+                    <button id="showCreateRoom" class="btn" style="margin: 10px;">새 방 만들기</button>
+                    <button id="showJoinRoom" class="btn" style="margin: 10px;">초대코드 입력하기</button>
+                    <button id="showAIGame" class="btn" style="margin: 10px; background: linear-gradient(45deg, #ff6b6b, #ee5a24);">🤖 AI와 대전</button>
+                </div>
+                
+                <!-- 방 만들기 폼 -->
+                <div id="createRoomForm" style="display: none;">
+                    <h3 style="margin-bottom: 20px; color: #e0e0e0;">새 방 만들기</h3>
+                    <div class="input-group">
+                        <label for="createPlayerName">플레이어 이름</label>
+                        <input type="text" id="createPlayerName" placeholder="이름을 입력하세요" maxlength="10">
+                    </div>
+                    <button id="createRoomBtn" class="btn">방 만들기</button>
+                    <button id="backToSelection" class="btn" style="background: #718096;">돌아가기</button>
+                </div>
+                
+                <!-- 방 입장 폼 -->
+                <div id="joinRoomForm" style="display: none;">
+                    <h3 style="margin-bottom: 20px; color: #e0e0e0;">방 입장하기</h3>
+                    <div class="input-group">
+                        <label for="joinPlayerName">플레이어 이름</label>
+                        <input type="text" id="joinPlayerName" placeholder="이름을 입력하세요" maxlength="10">
+                    </div>
+                    <div class="input-group">
+                        <label for="roomCode">초대코드</label>
+                        <input type="text" id="roomCode" placeholder="초대코드를 입력하세요" maxlength="8">
+                    </div>
+                    <button id="joinRoomBtn" class="btn">방 입장하기</button>
+                    <button id="backToSelection2" class="btn" style="background: #718096;">돌아가기</button>
+                </div>
+                
+                <!-- AI 게임 폼 -->
+                <div id="aiGameForm" style="display: none;">
+                    <h3 style="margin-bottom: 20px; color: #e0e0e0;">🤖 AI와 대전</h3>
+                    <div class="input-group">
+                        <label for="aiPlayerName">플레이어 이름</label>
+                        <input type="text" id="aiPlayerName" placeholder="이름을 입력하세요" maxlength="10">
+                    </div>
+                    <button id="createAIGameBtn" class="btn" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24);">AI와 게임 시작</button>
+                    <button id="backToSelection3" class="btn" style="background: #718096;">돌아가기</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대기실 화면 -->
+        <div id="waiting" class="game-section">
+            <div class="room-info">
+                <h3>방 정보</h3>
+                <div class="room-code" id="currentRoomCode">-</div>
+                <p>친구에게 이 코드를 공유하세요!</p>
+            </div>
+            
+            <div class="players-list">
+                <div class="player-card" id="player1Card">
+                    <h3>플레이어 1</h3>
+                    <div class="status" id="player1Status">대기 중...</div>
+                </div>
+                <div class="player-card" id="player2Card">
+                    <h3>플레이어 2</h3>
+                    <div class="status" id="player2Status">대기 중...</div>
+                </div>
+            </div>
+            
+            <div id="waitingMessage" class="message info">
+                다른 플레이어를 기다리는 중...
+            </div>
+            
+            <button id="startGameBtn" class="btn" style="display: none;">게임 시작</button>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div id="game" class="game-section">
+            <div class="round-info">
+                <h2 id="roundTitle">라운드 1</h2>
+                <p id="roundStatus">카드를 선택하세요</p>
+            </div>
+            
+            <div class="scores">
+                <div class="score-card" id="player1Score">
+                    <h3 id="player1Name">플레이어 1</h3>
+                    <div class="score" id="player1ScoreValue">0</div>
+                </div>
+                <div class="score-card" id="player2Score">
+                    <h3 id="player2Name">플레이어 2</h3>
+                    <div class="score" id="player2ScoreValue">0</div>
+                </div>
+            </div>
+            
+            <div class="play-area">
+                <div class="play-slot" id="player1PlaySlot">?</div>
+                <div class="play-slot" id="player2PlaySlot">?</div>
+            </div>
+            
+            <div class="cards-container" id="cardsContainer">
+                <!-- 카드들이 여기에 동적으로 생성됩니다 -->
+            </div>
+            
+            <div id="resultArea" class="result-area" style="display: none;">
+                <h3>라운드 결과</h3>
+                <div class="winner" id="roundWinner">-</div>
+                <div class="reason" id="roundReason">-</div>
+            </div>
+            
+            <div class="game-history">
+                <h3>게임 기록</h3>
+                <div id="historyContainer">
+                    <!-- 게임 기록이 여기에 동적으로 생성됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 종료 화면 -->
+        <div id="finished" class="game-section">
+            <div class="result-area">
+                <h2>🎉 게임 종료! 🎉</h2>
+                <div class="winner" id="gameWinner">-</div>
+                <div class="reason" id="gameResult">-</div>
+            </div>
+            
+            <div class="game-history">
+                <h3>전체 게임 기록</h3>
+                <div id="finalHistoryContainer">
+                    <!-- 최종 게임 기록이 여기에 동적으로 생성됩니다 -->
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="newGameBtn" class="btn">새 게임</button>
+                <button id="backToLobbyBtn" class="btn">로비로 돌아가기</button>
+            </div>
+        </div>
+
+        <!-- 메시지 표시 영역 -->
+        <div id="messageArea"></div>
+    </div>
+
+    <script>
+        class GameClient {
+            constructor() {
+                this.ws = null;
+                this.playerId = null;
+                this.playerName = null;
+                this.roomId = null;
+                this.currentPlayer = null;
+                this.gameState = 'lobby';
+                this.selectedCard = null;
+                
+                this.initializeElements();
+                this.attachEventListeners();
+            }
+            
+            initializeElements() {
+                this.elements = {
+                    // 화면들
+                    lobby: document.getElementById('lobby'),
+                    waiting: document.getElementById('waiting'),
+                    game: document.getElementById('game'),
+                    finished: document.getElementById('finished'),
+                    
+                    // 초기 선택 화면
+                    initialSelection: document.getElementById('initialSelection'),
+                    showCreateRoom: document.getElementById('showCreateRoom'),
+                    showJoinRoom: document.getElementById('showJoinRoom'),
+                    showAIGame: document.getElementById('showAIGame'),
+                    
+                    // 방 만들기 폼
+                    createRoomForm: document.getElementById('createRoomForm'),
+                    createPlayerName: document.getElementById('createPlayerName'),
+                    createRoomBtn: document.getElementById('createRoomBtn'),
+                    backToSelection: document.getElementById('backToSelection'),
+                    
+                    // 방 입장 폼
+                    joinRoomForm: document.getElementById('joinRoomForm'),
+                    joinPlayerName: document.getElementById('joinPlayerName'),
+                    roomCode: document.getElementById('roomCode'),
+                    joinRoomBtn: document.getElementById('joinRoomBtn'),
+                    backToSelection2: document.getElementById('backToSelection2'),
+                    
+                    // AI 게임 폼
+                    aiGameForm: document.getElementById('aiGameForm'),
+                    aiPlayerName: document.getElementById('aiPlayerName'),
+                    createAIGameBtn: document.getElementById('createAIGameBtn'),
+                    backToSelection3: document.getElementById('backToSelection3'),
+                    
+                    // 버튼들
+                    startGameBtn: document.getElementById('startGameBtn'),
+                    newGameBtn: document.getElementById('newGameBtn'),
+                    backToLobbyBtn: document.getElementById('backToLobbyBtn'),
+                    
+                    // 방 정보
+                    currentRoomCode: document.getElementById('currentRoomCode'),
+                    
+                    // 플레이어 정보
+                    player1Card: document.getElementById('player1Card'),
+                    player2Card: document.getElementById('player2Card'),
+                    player1Status: document.getElementById('player1Status'),
+                    player2Status: document.getElementById('player2Status'),
+                    
+                    // 게임 정보
+                    roundTitle: document.getElementById('roundTitle'),
+                    roundStatus: document.getElementById('roundStatus'),
+                    player1Name: document.getElementById('player1Name'),
+                    player2Name: document.getElementById('player2Name'),
+                    player1Score: document.getElementById('player1Score'),
+                    player2Score: document.getElementById('player2Score'),
+                    player1ScoreValue: document.getElementById('player1ScoreValue'),
+                    player2ScoreValue: document.getElementById('player2ScoreValue'),
+                    
+                    // 플레이 영역
+                    player1PlaySlot: document.getElementById('player1PlaySlot'),
+                    player2PlaySlot: document.getElementById('player2PlaySlot'),
+                    cardsContainer: document.getElementById('cardsContainer'),
+                    
+                    // 결과 영역
+                    resultArea: document.getElementById('resultArea'),
+                    roundWinner: document.getElementById('roundWinner'),
+                    roundReason: document.getElementById('roundReason'),
+                    
+                    // 게임 기록
+                    historyContainer: document.getElementById('historyContainer'),
+                    
+                    // 게임 종료
+                    gameWinner: document.getElementById('gameWinner'),
+                    gameResult: document.getElementById('gameResult'),
+                    finalHistoryContainer: document.getElementById('finalHistoryContainer'),
+                    
+                    // 메시지
+                    messageArea: document.getElementById('messageArea'),
+                    waitingMessage: document.getElementById('waitingMessage')
+                };
+            }
+            
+            attachEventListeners() {
+                // 초기 선택 화면
+                this.elements.showCreateRoom.addEventListener('click', () => this.showCreateRoomForm());
+                this.elements.showJoinRoom.addEventListener('click', () => this.showJoinRoomForm());
+                this.elements.showAIGame.addEventListener('click', () => this.showAIGameForm());
+                
+                // 방 만들기 폼
+                this.elements.createRoomBtn.addEventListener('click', () => this.createRoom());
+                this.elements.backToSelection.addEventListener('click', () => this.showInitialSelection());
+                
+                // 방 입장 폼
+                this.elements.joinRoomBtn.addEventListener('click', () => this.joinRoom());
+                this.elements.backToSelection2.addEventListener('click', () => this.showInitialSelection());
+                
+                // AI 게임 폼
+                this.elements.createAIGameBtn.addEventListener('click', () => this.createAIGame());
+                this.elements.backToSelection3.addEventListener('click', () => this.showInitialSelection());
+                
+                // 게임 버튼들
+                this.elements.startGameBtn.addEventListener('click', () => this.startGame());
+                this.elements.newGameBtn.addEventListener('click', () => this.newGame());
+                this.elements.backToLobbyBtn.addEventListener('click', () => this.backToLobby());
+                
+                // Enter 키로 방 입장
+                this.elements.roomCode.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.joinRoom();
+                });
+                
+                // Enter 키로 방 만들기
+                this.elements.createPlayerName.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.createRoom();
+                });
+                
+                // Enter 키로 AI 게임 시작
+                this.elements.aiPlayerName.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.createAIGame();
+                });
+            }
+            
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('WebSocket 연결됨');
+                    this.showMessage('서버에 연결되었습니다', 'success');
+                };
+                
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    this.handleMessage(data);
+                };
+                
+                this.ws.onclose = () => {
+                    console.log('WebSocket 연결 종료');
+                    this.showMessage('서버 연결이 끊어졌습니다', 'error');
+                };
+                
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket 오류:', error);
+                    this.showMessage('서버 연결 오류', 'error');
+                };
+            }
+            
+            handleMessage(data) {
+                console.log('받은 메시지:', data);
+                
+                switch (data.type) {
+                    case 'room_created':
+                        this.handleRoomCreated(data);
+                        break;
+                    case 'joined_room':
+                        this.handleJoinedRoom(data);
+                        break;
+                    case 'join_failed':
+                        this.showMessage(data.message, 'error');
+                        break;
+                    case 'player_joined':
+                        this.handlePlayerJoined(data);
+                        break;
+                    case 'player_left':
+                        this.handlePlayerLeft(data);
+                        break;
+                    case 'game_started':
+                        this.handleGameStarted(data);
+                        break;
+                    case 'ai_game_started':
+                        this.handleAIGameStarted(data);
+                        break;
+                    case 'card_played':
+                        this.handleCardPlayed(data);
+                        break;
+                    case 'round_result':
+                        this.handleRoundResult(data);
+                        break;
+                    case 'game_finished':
+                        this.handleGameFinished(data);
+                        break;
+                    case 'error':
+                        this.showMessage(data.message, 'error');
+                        break;
+                }
+            }
+            
+            showInitialSelection() {
+                this.elements.initialSelection.style.display = 'block';
+                this.elements.createRoomForm.style.display = 'none';
+                this.elements.joinRoomForm.style.display = 'none';
+                this.elements.aiGameForm.style.display = 'none';
+            }
+            
+            showCreateRoomForm() {
+                this.elements.initialSelection.style.display = 'none';
+                this.elements.createRoomForm.style.display = 'block';
+                this.elements.joinRoomForm.style.display = 'none';
+                this.elements.aiGameForm.style.display = 'none';
+                this.elements.createPlayerName.focus();
+            }
+            
+            showJoinRoomForm() {
+                this.elements.initialSelection.style.display = 'none';
+                this.elements.createRoomForm.style.display = 'none';
+                this.elements.joinRoomForm.style.display = 'block';
+                this.elements.aiGameForm.style.display = 'none';
+                this.elements.joinPlayerName.focus();
+            }
+            
+            showAIGameForm() {
+                this.elements.initialSelection.style.display = 'none';
+                this.elements.createRoomForm.style.display = 'none';
+                this.elements.joinRoomForm.style.display = 'none';
+                this.elements.aiGameForm.style.display = 'block';
+                this.elements.aiPlayerName.focus();
+            }
+            
+            createRoom() {
+                const playerName = this.elements.createPlayerName.value.trim();
+                if (!playerName) {
+                    this.showMessage('플레이어 이름을 입력하세요', 'error');
+                    return;
+                }
+                
+                this.playerName = playerName;
+                this.connectWebSocket();
+                
+                setTimeout(() => {
+                    this.sendMessage({
+                        type: 'create_room',
+                        playerId: this.generatePlayerId(),
+                        playerName: playerName
+                    });
+                }, 100);
+            }
+            
+            joinRoom() {
+                const playerName = this.elements.joinPlayerName.value.trim();
+                const roomCode = this.elements.roomCode.value.trim().toUpperCase();
+                
+                if (!playerName) {
+                    this.showMessage('플레이어 이름을 입력하세요', 'error');
+                    return;
+                }
+                
+                if (!roomCode) {
+                    this.showMessage('초대코드를 입력하세요', 'error');
+                    return;
+                }
+                
+                this.playerName = playerName;
+                this.connectWebSocket();
+                
+                setTimeout(() => {
+                    this.sendMessage({
+                        type: 'join_room',
+                        roomId: roomCode,
+                        playerId: this.generatePlayerId(),
+                        playerName: playerName
+                    });
+                }, 100);
+            }
+            
+            createAIGame() {
+                const playerName = this.elements.aiPlayerName.value.trim();
+                if (!playerName) {
+                    this.showMessage('플레이어 이름을 입력하세요', 'error');
+                    return;
+                }
+                
+                this.playerName = playerName;
+                this.connectWebSocket();
+                
+                setTimeout(() => {
+                    this.sendMessage({
+                        type: 'create_ai_room',
+                        playerId: this.generatePlayerId(),
+                        playerName: playerName
+                    });
+                }, 100);
+            }
+            
+            startGame() {
+                this.sendMessage({
+                    type: 'start_game',
+                    roomId: this.roomId
+                });
+            }
+            
+            newGame() {
+                this.sendMessage({
+                    type: 'start_game',
+                    roomId: this.roomId
+                });
+            }
+            
+            backToLobby() {
+                this.showScreen('lobby');
+                this.resetGame();
+            }
+            
+            playCard(card) {
+                if (this.selectedCard) return;
+                
+                this.selectedCard = card;
+                this.sendMessage({
+                    type: 'play_card',
+                    roomId: this.roomId,
+                    playerId: this.playerId,
+                    card: card
+                });
+                
+                this.updateCardsDisplay();
+            }
+            
+            handleRoomCreated(data) {
+                this.playerId = data.playerId || this.generatePlayerId();
+                this.roomId = data.roomId;
+                this.currentPlayer = data.player;
+                this.elements.currentRoomCode.textContent = data.roomId;
+                this.updatePlayersDisplay(data.room);
+                this.showScreen('waiting');
+                this.showMessage('방이 생성되었습니다! 친구에게 방 코드를 공유하세요.', 'success');
+            }
+            
+            handleJoinedRoom(data) {
+                this.playerId = data.playerId || this.generatePlayerId();
+                this.roomId = data.roomId;
+                this.currentPlayer = data.player;
+                this.elements.currentRoomCode.textContent = data.roomId;
+                this.updatePlayersDisplay(data.room);
+                this.showScreen('waiting');
+                this.showMessage('방에 입장했습니다!', 'success');
+            }
+            
+            handlePlayerJoined(data) {
+                this.updatePlayersDisplay(data.room);
+                this.showMessage(`${data.player.name}님이 입장했습니다!`, 'info');
+            }
+            
+            handlePlayerLeft(data) {
+                this.updatePlayersDisplay(data.room);
+                this.showMessage('플레이어가 퇴장했습니다.', 'info');
+            }
+            
+            handleGameStarted(data) {
+                this.showScreen('game');
+                this.updateGameDisplay(data.room);
+                this.showMessage('게임이 시작되었습니다!', 'success');
+            }
+            
+            handleAIGameStarted(data) {
+                console.log('AI 게임 시작 데이터:', data);
+                this.playerId = data.playerId || this.generatePlayerId();
+                this.roomId = data.roomId;
+                this.currentPlayer = data.player;
+                this.showScreen('game');
+                
+                console.log('현재 플레이어:', this.currentPlayer);
+                console.log('방 데이터:', data.room);
+                
+                this.updateGameDisplay(data.room);
+                this.showMessage('AI와의 게임이 시작되었습니다!', 'success');
+                
+                // 카드 표시 강제 업데이트
+                setTimeout(() => {
+                    console.log('카드 강제 업데이트 시도');
+                    this.updateCardsDisplay(data.room.cards);
+                }, 100);
+            }
+            
+            handleCardPlayed(data) {
+                this.updatePlayArea(data.currentPlay);
+                this.updateCardsDisplay(data.cards);
+                
+                if (data.playerId === this.playerId) {
+                    this.showMessage('카드를 제출했습니다!', 'info');
+                } else {
+                    this.showMessage('상대방이 카드를 제출했습니다!', 'info');
+                }
+            }
+            
+            handleRoundResult(data) {
+                this.updateScores(data.scores);
+                this.showRoundResult(data.result);
+                this.addToHistory(data.result);
+                
+                // 다음 라운드 준비
+                setTimeout(() => {
+                    this.prepareNextRound(data.currentRound, data.gameState);
+                }, 3000);
+            }
+            
+            handleGameFinished(data) {
+                this.showScreen('finished');
+                this.showGameResult(data.result);
+                this.showFinalHistory(data.result.rounds);
+                this.showMessage('게임이 종료되었습니다!', 'success');
+            }
+            
+            updatePlayersDisplay(room) {
+                const players = room.players;
+                
+                if (players.length >= 1) {
+                    this.elements.player1Status.textContent = players[0].name;
+                    this.elements.player1Card.classList.add('active');
+                } else {
+                    this.elements.player1Status.textContent = '대기 중...';
+                    this.elements.player1Card.classList.remove('active');
+                }
+                
+                if (players.length >= 2) {
+                    this.elements.player2Status.textContent = players[1].name;
+                    this.elements.player2Card.classList.add('active');
+                    this.elements.startGameBtn.style.display = 'block';
+                    this.elements.waitingMessage.textContent = '게임을 시작할 준비가 되었습니다!';
+                } else {
+                    this.elements.player2Status.textContent = '대기 중...';
+                    this.elements.player2Card.classList.remove('active');
+                    this.elements.startGameBtn.style.display = 'none';
+                    this.elements.waitingMessage.textContent = '다른 플레이어를 기다리는 중...';
+                }
+            }
+            
+            updateGameDisplay(room) {
+                this.elements.player1Name.textContent = room.players[0]?.name || '플레이어 1';
+                this.elements.player2Name.textContent = room.players[1]?.name || 'AI';
+                
+                this.updateScores(room.scores);
+                this.updateCardsDisplay(room.cards);
+                this.updateRoundInfo(room.currentRound);
+                
+                console.log('게임 디스플레이 업데이트:', { room, currentPlayer: this.currentPlayer });
+            }
+            
+            updateScores(scores) {
+                this.elements.player1ScoreValue.textContent = scores.player1;
+                this.elements.player2ScoreValue.textContent = scores.player2;
+                
+                // 승리자 하이라이트
+                this.elements.player1Score.classList.remove('winner');
+                this.elements.player2Score.classList.remove('winner');
+                
+                if (scores.player1 > scores.player2) {
+                    this.elements.player1Score.classList.add('winner');
+                } else if (scores.player2 > scores.player1) {
+                    this.elements.player2Score.classList.add('winner');
+                }
+            }
+            
+            updateCardsDisplay(cards) {
+                console.log('updateCardsDisplay 호출됨:', { cards, currentPlayer: this.currentPlayer });
+                
+                const container = this.elements.cardsContainer;
+                container.innerHTML = '';
+                
+                const playerPosition = this.currentPlayer?.position;
+                console.log('플레이어 위치:', playerPosition);
+                
+                if (!playerPosition) {
+                    console.log('플레이어 위치가 없음');
+                    return;
+                }
+                
+                if (!cards || !cards[playerPosition]) {
+                    console.log('카드 데이터가 없음:', { cards, playerPosition });
+                    return;
+                }
+                
+                console.log('카드 표시 시작:', { playerPosition, availableCards: cards[playerPosition] });
+                
+                cards[playerPosition].forEach(card => {
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'card';
+                    cardElement.textContent = card;
+                    
+                    if (this.selectedCard === card) {
+                        cardElement.classList.add('selected');
+                    }
+                    
+                    cardElement.addEventListener('click', () => {
+                        if (!this.selectedCard && this.gameState === 'playing') {
+                            this.playCard(card);
+                        }
+                    });
+                    
+                    container.appendChild(cardElement);
+                });
+                
+                console.log('카드 표시 완료, 총 카드 수:', cards[playerPosition].length);
+            }
+            
+            updatePlayArea(currentPlay) {
+                this.elements.player1PlaySlot.textContent = currentPlay.player1 || '?';
+                this.elements.player2PlaySlot.textContent = currentPlay.player2 || '?';
+                
+                this.elements.player1PlaySlot.classList.toggle('filled', currentPlay.player1 !== null);
+                this.elements.player2PlaySlot.classList.toggle('filled', currentPlay.player2 !== null);
+            }
+            
+            updateRoundInfo(round) {
+                this.elements.roundTitle.textContent = `라운드 ${round}`;
+                this.elements.roundStatus.textContent = '카드를 선택하세요';
+            }
+            
+            showRoundResult(result) {
+                this.elements.resultArea.style.display = 'block';
+                
+                let winnerText = '';
+                if (result.winner === 'player1') {
+                    winnerText = '플레이어 1 승리!';
+                } else if (result.winner === 'player2') {
+                    winnerText = '플레이어 2 승리!';
+                } else {
+                    winnerText = '무승부!';
+                }
+                
+                this.elements.roundWinner.textContent = winnerText;
+                this.elements.roundReason.textContent = result.reason;
+            }
+            
+            prepareNextRound(round, gameState) {
+                this.elements.resultArea.style.display = 'none';
+                this.elements.player1PlaySlot.textContent = '?';
+                this.elements.player2PlaySlot.textContent = '?';
+                this.elements.player1PlaySlot.classList.remove('filled');
+                this.elements.player2PlaySlot.classList.remove('filled');
+                
+                this.selectedCard = null;
+                
+                if (gameState === 'playing') {
+                    this.updateRoundInfo(round);
+                    this.updateCardsDisplay();
+                }
+            }
+            
+            addToHistory(result) {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                let winnerText = '';
+                if (result.winner === 'player1') {
+                    winnerText = '플레이어 1 승리';
+                } else if (result.winner === 'player2') {
+                    winnerText = '플레이어 2 승리';
+                } else {
+                    winnerText = '무승부';
+                }
+                
+                historyItem.innerHTML = `
+                    <span class="round">라운드 ${result.round}</span>
+                    <span class="cards">${result.player1Card} vs ${result.player2Card}</span>
+                    <span class="winner">${winnerText}</span>
+                `;
+                
+                this.elements.historyContainer.appendChild(historyItem);
+            }
+            
+            showGameResult(result) {
+                let winnerText = '';
+                let resultText = '';
+                
+                if (result.winner === 'player1') {
+                    winnerText = '🎉 플레이어 1 승리! 🎉';
+                    resultText = `${result.scores.player1} : ${result.scores.player2}`;
+                } else if (result.winner === 'player2') {
+                    winnerText = '🎉 플레이어 2 승리! 🎉';
+                    resultText = `${result.scores.player1} : ${result.scores.player2}`;
+                } else {
+                    winnerText = '🤝 무승부! 🤝';
+                    resultText = `${result.scores.player1} : ${result.scores.player2}`;
+                }
+                
+                this.elements.gameWinner.textContent = winnerText;
+                this.elements.gameResult.textContent = resultText;
+            }
+            
+            showFinalHistory(rounds) {
+                const container = this.elements.finalHistoryContainer;
+                container.innerHTML = '';
+                
+                rounds.forEach(result => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    
+                    let winnerText = '';
+                    if (result.winner === 'player1') {
+                        winnerText = '플레이어 1 승리';
+                    } else if (result.winner === 'player2') {
+                        winnerText = '플레이어 2 승리';
+                    } else {
+                        winnerText = '무승부';
+                    }
+                    
+                    historyItem.innerHTML = `
+                        <span class="round">라운드 ${result.round}</span>
+                        <span class="cards">${result.player1Card} vs ${result.player2Card}</span>
+                        <span class="winner">${winnerText}</span>
+                    `;
+                    
+                    container.appendChild(historyItem);
+                });
+            }
+            
+            showScreen(screenName) {
+                const screens = ['lobby', 'waiting', 'game', 'finished'];
+                screens.forEach(screen => {
+                    document.getElementById(screen).classList.toggle('active', screen === screenName);
+                });
+                this.gameState = screenName;
+            }
+            
+            showMessage(message, type = 'info') {
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${type}`;
+                messageElement.textContent = message;
+                
+                this.elements.messageArea.appendChild(messageElement);
+                
+                setTimeout(() => {
+                    messageElement.remove();
+                }, 5000);
+            }
+            
+            sendMessage(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(message));
+                }
+            }
+            
+            generatePlayerId() {
+                return 'player_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            resetGame() {
+                this.selectedCard = null;
+                this.elements.historyContainer.innerHTML = '';
+                this.elements.finalHistoryContainer.innerHTML = '';
+                this.elements.resultArea.style.display = 'none';
+                this.elements.createPlayerName.value = '';
+                this.elements.joinPlayerName.value = '';
+                this.elements.aiPlayerName.value = '';
+                this.elements.roomCode.value = '';
+                this.showInitialSelection();
+            }
+        }
+        
+        // 게임 클라이언트 초기화
+        const gameClient = new GameClient();
+    </script>
+</body>
+</html>
