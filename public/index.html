@@ -864,74 +864,11 @@
             }
             
             async createRoom() {
-                const playerName = this.elements.createPlayerName.value.trim();
-                if (!playerName) {
-                    this.showMessage('플레이어 이름을 입력하세요', 'error');
-                    return;
-                }
-                
-                this.playerName = playerName;
-                this.playerId = this.generatePlayerId();
-                await this.connectAbly();
-                
-                try {
-                    const response = await fetch('/game/create_room', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            playerId: this.playerId,
-                            playerName: playerName
-                        })
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        this.roomId = data.roomId;
-                        this.currentPlayer = data.player;
-                        this.subscribeToRoom(this.roomId);
-                        this.handleMessage(data);
-                    }
-                } catch (error) {
-                    console.error('방 생성 오류:', error);
-                    this.showMessage('방 생성 실패', 'error');
-                }
+                this.showMessage('현재 버전은 Ably-only AI 모드만 지원합니다', 'error');
             }
             
             async joinRoom() {
-                const playerName = this.elements.joinPlayerName.value.trim();
-                const roomCode = this.elements.roomCode.value.trim().toUpperCase();
-                
-                if (!playerName || !roomCode) {
-                    this.showMessage('이름과 방 코드를 모두 입력하세요', 'error');
-                    return;
-                }
-                
-                this.playerName = playerName;
-                this.playerId = this.generatePlayerId();
-                this.roomId = roomCode;
-                await this.connectAbly();
-                
-                try {
-                    const response = await fetch('/game/join_room', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            roomId: roomCode,
-                            playerId: this.playerId,
-                            playerName: playerName
-                        })
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        this.currentPlayer = data.player;
-                        this.subscribeToRoom(this.roomId);
-                        this.handleMessage(data);
-                    } else {
-                        this.showMessage(data.message || '방 입장 실패', 'error');
-                    }
-                } catch (error) {
-                    console.error('방 입장 오류:', error);
-                    this.showMessage('방 입장 실패', 'error');
-                }
+                this.showMessage('현재 버전은 Ably-only AI 모드만 지원합니다', 'error');
             }
             
             async createAIGame() {
@@ -974,22 +911,7 @@
             }
             
             async startGame() {
-                try {
-                    const response = await fetch('/game/start_game', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            roomId: this.roomId
-                        })
-                    });
-                    const data = await response.json();
-                    if (!data.success) {
-                        this.showMessage('게임 시작 실패', 'error');
-                    }
-                } catch (error) {
-                    console.error('게임 시작 오류:', error);
-                    this.showMessage('게임 시작 실패', 'error');
-                }
+                this.showMessage('현재 버전은 Ably-only AI 모드만 지원합니다', 'error');
             }
             
             async playCard(card) {
