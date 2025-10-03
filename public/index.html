@@ -1200,6 +1200,10 @@
                     { title: '1', sub: '' },
                     { title: '다음 카드를 내주세요', sub: '' }
                 ];
+                // 게임 종료 시 마지막 단계 제거 (멀티플레이 + AI 모두)
+                if (this._cachedRoom && this._cachedRoom.gameState === 'finished') {
+                    steps.pop();
+                }
                 let idx = 0;
                 const run = () => {
                     const s = steps[idx];
@@ -1288,10 +1292,31 @@
             }
             
             newGame() {
-                this.startGame();
+                // 동일한 사람과 새 게임 시작 (방 재사용) - 멀티플레이 + AI 모두
+                if (!this._cachedRoom || !this.channel) return;
+                
+                // 게임 상태 초기화
+                const newRoom = {
+                    ...this._cachedRoom,
+                    cards: { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
+                    currentPlay: { player1: null, player2: null },
+                    scores: { player1: 0, player2: 0 },
+                    currentRound: 1,
+                    gameState: 'playing'
+                };
+                
+                this._cachedRoom = newRoom;
+                this.channel.publish('game-event', { type: 'state', room: newRoom });
+                this.updateGameDisplay(newRoom);
+                this.showStartHint();
             }
             
             backToLobby() {
+                // 방 나가기: 채널 구독 해제 후 메인으로 이동 (멀티플레이 + AI 모두)
+                if (this.channel) {
+                    this.channel.unsubscribe();
+                    this.channel = null;
+                }
                 this.resetGame();
             }
             
