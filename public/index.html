@@ -356,6 +356,7 @@
             }
         }
     </style>
+    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 </head>
 <body>
     <div class="container">
@@ -495,7 +496,8 @@
                 this.currentPlayer = null;
                 this.gameState = 'lobby';
                 this.selectedCard = null;
-                this.pollingInterval = null;
+                this.ably = null;
+                this.channel = null;
                 
                 this.initializeElements();
                 this.attachEventListeners();
@@ -590,37 +592,47 @@
                 });
             }
             
-            startPolling() {
-                console.log('폴링 시작...');
-                this.showMessage('서버에 연결되었습니다', 'success');
-                
-                this.pollingInterval = setInterval(() => {
-                    this.pollEvents();
-                }, 1000); // 1초마다 폴링
-            }
-            
-            stopPolling() {
-                if (this.pollingInterval) {
-                    clearInterval(this.pollingInterval);
-                    this.pollingInterval = null;
-                }
-            }
-            
-            async pollEvents() {
-                if (!this.playerId) return;
+            async connectAbly() {
+                console.log('Ably 연결 시도...');
                 
                 try {
-                    const response = await fetch(`/poll/${this.playerId}`);
-                    const data = await response.json();
+                    // Ably 클라이언트 초기화 (간단한 방식)
+                    this.ably = new Ably.Realtime("qvbjOA.EbbZ6g:lHGCOz5aSbkalenzwn2qRImwpxQul9BKZo3NQmbKw6g");
                     
-                    if (data.events && data.events.length > 0) {
-                        data.events.forEach(event => {
-                            this.handleMessage(event);
-                        });
-                    }
+                    this.ably.connection.once('connected', () => {
+                        console.log('Ably 연결됨');
+                        this.showMessage('서버에 연결되었습니다', 'success');
+                    });
+                    
+                    this.ably.connection.on('disconnected', () => {
+                        console.log('Ably 연결 종료');
+                        this.showMessage('서버 연결이 끊어졌습니다', 'error');
+                    });
+                    
+                    this.ably.connection.on('failed', (error) => {
+                        console.error('Ably 연결 실패:', error);
+                        this.showMessage('서버 연결 실패', 'error');
+                    });
+                    
                 } catch (error) {
-                    console.error('폴링 오류:', error);
+                    console.error('Ably 연결 오류:', error);
+                    this.showMessage('서버 연결 오류', 'error');
                 }
+            }
+            
+            async subscribeToRoom(roomId) {
+                if (!this.ably) return;
+                
+                this.channel = this.ably.channels.get(`room:${roomId}`);
+                
+                await this.channel.subscribe('game-event', (message) => {
+                    const data = message.data;
+                    
+                    // 자신에게 보낸 메시지만 처리
+                    if (data.targetPlayer === this.playerId) {
+                        this.handleMessage(data);
+                    }
+                });
             }
             
             handleMessage(data) {
@@ -746,7 +758,7 @@
                 
                 this.playerName = playerName;
                 this.playerId = this.generatePlayerId();
-                this.startPolling();
+                await this.connectAbly();
                 
                 try {
                     const response = await fetch('/game/create_room', {
@@ -759,7 +771,10 @@
                     });
                     const data = await response.json();
                     if (data.success) {
-                        this.playerId = data.playerId;
+                        this.roomId = data.roomId;
+                        this.currentPlayer = data.player;
+                        this.subscribeToRoom(this.roomId);
+                        this.handleMessage(data);
                     }
                 } catch (error) {
                     console.error('방 생성 오류:', error);
@@ -779,7 +794,7 @@
                 this.playerName = playerName;
                 this.playerId = this.generatePlayerId();
                 this.roomId = roomCode;
-                this.startPolling();
+                await this.connectAbly();
                 
                 try {
                     const response = await fetch('/game/join_room', {
@@ -792,7 +807,11 @@
                         })
                     });
                     const data = await response.json();
-                    if (!data.success) {
+                    if (data.success) {
+                        this.currentPlayer = data.player;
+                        this.subscribeToRoom(this.roomId);
+                        this.handleMessage(data);
+                    } else {
                         this.showMessage(data.message || '방 입장 실패', 'error');
                     }
                 } catch (error) {
@@ -810,7 +829,7 @@
                 
                 this.playerName = playerName;
                 this.playerId = this.generatePlayerId();
-                this.startPolling();
+                await this.connectAbly();
                 
                 try {
                     const response = await fetch('/game/create_ai_room', {
@@ -823,7 +842,10 @@
                     });
                     const data = await response.json();
                     if (data.success) {
-                        this.playerId = data.playerId;
+                        this.roomId = data.roomId;
+                        this.currentPlayer = data.player;
+                        this.subscribeToRoom(this.roomId);
+                        this.handleMessage(data);
                     }
                 } catch (error) {
                     console.error('AI 게임 생성 오류:', error);
@@ -984,7 +1006,15 @@
             }
             
             resetGame() {
-                this.stopPolling();
+                if (this.ably) {
+                    this.ably.close();
+                    this.ably = null;
+                }
+                if (this.channel) {
+                    this.channel.unsubscribe();
+                    this.channel = null;
+                }
+                
                 this.playerId = null;
                 this.playerName = null;
                 this.roomId = null;
