@@ -779,9 +779,26 @@
                         this.updateWaitingDisplay(data.room);
                         this.showMessage(`${data.player.name}님이 입장했습니다!`, 'success');
                         break;
+                    case 'join':
+                        // 호스트가 참가자 수락 → state 업데이트, 시작 준비
+                        if (!this.isHost) break;
+                        if (!this._cachedRoom) break;
+                        const already = this._cachedRoom.players.find(p => p.id === data.player.id);
+                        if (!already && this._cachedRoom.players.length < 2) {
+                            this._cachedRoom.players.push({ id: data.player.id, name: data.player.name, position: 'player2' });
+                            this.channel.publish('game-event', { type: 'player_joined', player: { id: data.player.id, name: data.player.name }, room: this._cachedRoom });
+                            // 두 명 모이면 바로 시작
+                            this._cachedRoom.gameState = 'playing';
+                            this.channel.publish('game-event', { type: 'game_started', room: this._cachedRoom });
+                        }
+                        break;
                         
                     case 'game_started':
                         this.showScreen('game');
+                        this._cachedRoom = data.room;
+                        // 내 포지션 설정
+                        const me = data.room.players.find(p => p.id === this.playerId);
+                        if (me) this.currentPlayer = me;
                         this.updateGameDisplay(data.room);
                         this.showStartHint();
                         this.showMessage('게임이 시작되었습니다!', 'success');
@@ -864,11 +881,52 @@
             }
             
             async createRoom() {
-                this.showMessage('현재 버전은 Ably-only AI 모드만 지원합니다', 'error');
+                const playerName = this.elements.createPlayerName.value.trim();
+                if (!playerName) { this.showMessage('플레이어 이름을 입력하세요', 'error'); return; }
+                this.playerName = playerName;
+                this.playerId = this.generatePlayerId();
+                await this.connectAbly();
+
+                // 호스트가 방을 만든다
+                this.roomId = (Math.random().toString(36).slice(2, 6).toUpperCase());
+                await this.subscribeToRoom(this.roomId);
+                this.isHost = true;
+
+                const me = { id: this.playerId, name: this.playerName, position: 'player1' };
+                const room = {
+                    id: this.roomId,
+                    players: [me],
+                    cards: { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
+                    currentPlay: { player1: null, player2: null },
+                    scores: { player1: 0, player2: 0 },
+                    currentRound: 1,
+                    maxRounds: 9,
+                    gameState: 'lobby',
+                    isAIGame: false
+                };
+                this._cachedRoom = room;
+                this.currentPlayer = me;
+                this.showScreen('waiting');
+                this.updateWaitingDisplay(room);
+                // 방 코드 표기
+                this.elements.displayRoomCode.textContent = this.roomId;
+                // 상태 방송
+                this.channel.publish('game-event', { type: 'state', room });
             }
             
             async joinRoom() {
-                this.showMessage('현재 버전은 Ably-only AI 모드만 지원합니다', 'error');
+                const playerName = this.elements.joinPlayerName.value.trim();
+                const roomCode = this.elements.roomCode.value.trim().toUpperCase();
+                if (!playerName || !roomCode) { this.showMessage('이름과 방 코드를 모두 입력하세요', 'error'); return; }
+                this.playerName = playerName;
+                this.playerId = this.generatePlayerId();
+                this.roomId = roomCode;
+                await this.connectAbly();
+                await this.subscribeToRoom(this.roomId);
+                // 참가 요청
+                this.channel.publish('game-event', { type: 'join', player: { id: this.playerId, name: this.playerName } });
+                this.showScreen('waiting');
+                this.elements.displayRoomCode.textContent = this.roomId;
             }
             
             async createAIGame() {
