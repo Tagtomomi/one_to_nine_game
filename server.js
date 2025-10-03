@@ -18,6 +18,15 @@ const io = new Server(server, {
 // 정적 파일 서빙
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Socket.IO 경로 확인을 위한 헬스체크
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    socketIO: 'enabled',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // 게임 상태 저장 (메모리)
 const rooms = new Map();
 const players = new Map();

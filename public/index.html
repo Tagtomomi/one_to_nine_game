@@ -682,10 +682,18 @@
             connectWebSocket() {
                 console.log('Socket.IO 연결 시도...');
                 
-                this.socket = io();
+                // Vercel 환경에서 Socket.IO 설정
+                this.socket = io({
+                    transports: ['websocket', 'polling'],
+                    upgrade: true,
+                    rememberUpgrade: true,
+                    timeout: 20000,
+                    forceNew: true
+                });
                 
                 this.socket.on('connect', () => {
                     console.log('Socket.IO 연결됨:', this.socket.id);
+                    console.log('전송 방식:', this.socket.io.engine.transport.name);
                     this.showMessage('서버에 연결되었습니다', 'success');
                 });
                 
