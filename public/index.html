@@ -716,16 +716,11 @@
             
             async subscribeToRoom(roomId) {
                 if (!this.ably) return;
-                
                 this.channel = this.ably.channels.get(`room:${roomId}`);
-                
                 await this.channel.subscribe('game-event', (message) => {
                     const data = message.data;
-                    
-                    // 자신에게 보낸 메시지만 처리
-                    if (data.targetPlayer === this.playerId) {
-                        this.handleMessage(data);
-                    }
+                    // 모든 브로드캐스트 처리 (Ably-only 모드)
+                    this.handleMessage(data);
                 });
             }
             
@@ -763,6 +758,12 @@
                             console.log('카드 컨테이너 표시 상태:', window.getComputedStyle(this.elements.cardsContainer).display);
                             console.log('카드 컨테이너 자식 요소 수:', this.elements.cardsContainer.children.length);
                         }, 100);
+                        break;
+                    // Ably-only 상태 동기화
+                    case 'state':
+                        if (data.room) {
+                            this.updateGameDisplay(data.room);
+                        }
                         break;
                         
                     case 'joined_room':
@@ -936,47 +937,40 @@
             async createAIGame() {
                 const playerName = this.elements.aiPlayerName.value.trim();
                 const difficulty = this.elements.aiDifficulty.value;
-                
-                if (!playerName) {
-                    this.showMessage('플레이어 이름을 입력하세요', 'error');
-                    return;
-                }
-                
+                if (!playerName) { this.showMessage('플레이어 이름을 입력하세요', 'error'); return; }
                 this.playerName = playerName;
                 this.playerId = this.generatePlayerId();
                 await this.connectAbly();
-                
-                try {
-                    const response = await fetch('/game/create_ai_room', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            playerId: this.playerId,
-                            playerName: playerName,
-                            difficulty: difficulty
-                        })
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        this.roomId = data.roomId;
-                        this.currentPlayer = data.player;
-                        this.subscribeToRoom(this.roomId);
-                        this.handleMessage(data);
-                        
-                        // 난이도 정보 표시
-                        const difficultyNames = {
-                            'easy': '쉬움',
-                            'normal': '보통',
-                            'hard': '어려움'
-                        };
-                        this.showMessage(`AI 난이도: ${difficultyNames[difficulty]}`, 'success');
-                    } else {
-                        this.showMessage('AI 게임 생성 실패', 'error');
-                    }
-                } catch (error) {
-                    console.error('AI 게임 생성 오류:', error);
-                    this.showMessage('AI 게임 생성 실패', 'error');
-                }
+                // 로컬 방 생성 (Ably-only)
+                this.roomId = 'room-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+                await this.subscribeToRoom(this.roomId);
+
+                const aiPlayer = { id: 'ai_player', name: 'AI🤖', position: 'player2' };
+                const me = { id: this.playerId, name: this.playerName, position: 'player1' };
+                const room = {
+                    id: this.roomId,
+                    players: [me, aiPlayer],
+                    cards: { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
+                    currentPlay: { player1: null, player2: null },
+                    scores: { player1: 0, player2: 0 },
+                    currentRound: 1,
+                    maxRounds: 9,
+                    gameState: 'playing',
+                    isAIGame: true,
+                    aiDifficulty: difficulty
+                };
+
+                this.currentPlayer = me;
+                this.handleMessage({
+                    type: 'ai_game_started',
+                    playerId: this.playerId,
+                    roomId: this.roomId,
+                    player: me,
+                    room
+                });
+
+                // 초기 상태 브로드캐스트
+                this.channel.publish('game-event', { type: 'state', room });
             }
             
             async startGame() {
@@ -999,44 +993,75 @@
             }
             
             async playCard(card) {
-                console.log('playCard 호출됨:', { card, selectedCard: this.selectedCard, roomId: this.roomId, playerId: this.playerId });
-                
-                if (this.selectedCard) {
-                    console.log('이미 카드를 선택함:', this.selectedCard);
-                    return;
-                }
-                
+                // Ably-only: 로컬 상태를 갱신하고 브로드캐스트
+                if (!this.roomId || !this.channel) return;
+                if (this.selectedCard) return;
                 this.selectedCard = card;
-                try {
-                    const requestData = {
-                        roomId: this.roomId,
-                        playerId: this.playerId,
-                        card: card
+                const myPos = this.currentPlayer?.position;
+                if (!myPos) { this.selectedCard = null; return; }
+
+                // 현재 UI에서 room 유추가 필요하므로 state를 화면 요소에서 재구성
+                const room = this._cachedRoom || null;
+                const rebuildFromUI = () => {
+                    return {
+                        id: this.roomId,
+                        players: [
+                            { id: this.playerId, name: this.playerName, position: 'player1' },
+                            { id: 'ai_player', name: 'AI🤖', position: 'player2' }
+                        ],
+                        cards: this._lastCards || { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
+                        currentPlay: this._lastCurrentPlay || { player1: null, player2: null },
+                        scores: this._lastScores || { player1: 0, player2: 0 },
+                        currentRound: this._lastRound || 1,
+                        maxRounds: 9,
+                        gameState: 'playing',
+                        isAIGame: true
                     };
-                    console.log('카드 플레이 요청:', requestData);
-                    
-                    const response = await fetch('/game/play_card', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestData)
-                    });
-                    
-                    console.log('응답 상태:', response.status);
-                    const data = await response.json();
-                    console.log('응답 데이터:', data);
-                    
-                    if (!data.success) {
-                        console.log('카드 플레이 실패:', data.message);
-                        this.showMessage(`카드 플레이 실패: ${data.message || '알 수 없는 오류'}`, 'error');
-                        this.selectedCard = null;
-                    } else {
-                        console.log('카드 플레이 성공');
-                    }
-                } catch (error) {
-                    console.error('카드 플레이 오류:', error);
-                    this.showMessage('카드 플레이 실패', 'error');
-                    this.selectedCard = null;
+                };
+                const s = room || rebuildFromUI();
+
+                if (!s.cards[myPos].includes(card) || s.currentPlay[myPos] !== null) { this.selectedCard = null; return; }
+                s.currentPlay[myPos] = card;
+                s.cards[myPos] = s.cards[myPos].filter(c => c !== card);
+
+                // AI 턴 (간단 랜덤)
+                if (s.currentPlay.player2 === null && myPos === 'player1') {
+                    const avail = s.cards.player2;
+                    const aiCard = avail[Math.floor(Math.random() * avail.length)];
+                    s.currentPlay.player2 = aiCard;
+                    s.cards.player2 = s.cards.player2.filter(c => c !== aiCard);
                 }
+
+                // 양측이 냈으면 판정
+                if (s.currentPlay.player1 !== null && s.currentPlay.player2 !== null) {
+                    const a = s.currentPlay.player1, b = s.currentPlay.player2;
+                    let winner = 'tie';
+                    if (a === 1 && b === 9) winner = 'player1';
+                    else if (b === 1 && a === 9) winner = 'player2';
+                    else if (a > b) winner = 'player1';
+                    else if (b > a) winner = 'player2';
+
+                    if (winner === 'player1') s.scores.player1 += 1;
+                    if (winner === 'player2') s.scores.player2 += 1;
+
+                    const result = { round: s.currentRound, player1Card: a, player2Card: b, winner };
+                    this.channel.publish('game-event', { type: 'round_result', result, scores: s.scores, currentRound: s.currentRound + 1, gameState: s.gameState });
+
+                    s.currentPlay = { player1: null, player2: null };
+                    s.currentRound += 1;
+                    if (s.currentRound > s.maxRounds) {
+                        s.gameState = 'finished';
+                        const finalWinner = s.scores.player1 === s.scores.player2 ? 'tie' : (s.scores.player1 > s.scores.player2 ? 'player1' : 'player2');
+                        this.channel.publish('game-event', { type: 'game_finished', result: { winner: finalWinner, scores: s.scores } });
+                    }
+                }
+
+                // 상태 동기화
+                this.channel.publish('game-event', { type: 'state', room: s });
+                // 로컬 캐시와 UI 갱신
+                this._cachedRoom = s;
+                this.updateGameDisplay(s);
+                this.selectedCard = null;
             }
             
             updateWaitingDisplay(room) {
