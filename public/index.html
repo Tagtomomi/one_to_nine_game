@@ -543,6 +543,7 @@
         <div id="messageArea"></div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         class GameClient {
             constructor() {
@@ -679,28 +680,17 @@
             }
             
             connectWebSocket() {
-                // Socket.IO 클라이언트 라이브러리 로드
-                if (typeof io === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
-                    script.onload = () => {
-                        this.initializeSocket();
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    this.initializeSocket();
-                }
-            }
-            
-            initializeSocket() {
+                console.log('Socket.IO 연결 시도...');
+                
                 this.socket = io();
                 
                 this.socket.on('connect', () => {
-                    console.log('Socket.IO 연결됨');
+                    console.log('Socket.IO 연결됨:', this.socket.id);
                     this.showMessage('서버에 연결되었습니다', 'success');
                 });
                 
                 this.socket.on('message', (data) => {
+                    console.log('Socket.IO 메시지 받음:', data);
                     this.handleMessage(data);
                 });
                 
@@ -710,8 +700,13 @@
                 });
                 
                 this.socket.on('connect_error', (error) => {
+                    console.error('Socket.IO 연결 오류:', error);
+                    this.showMessage('서버 연결 오류: ' + error.message, 'error');
+                });
+                
+                this.socket.on('error', (error) => {
                     console.error('Socket.IO 오류:', error);
-                    this.showMessage('서버 연결 오류', 'error');
+                    this.showMessage('Socket.IO 오류: ' + error.message, 'error');
                 });
             }
             
