@@ -1004,6 +1004,8 @@
                 // Ably-only: 로컬 상태를 갱신하고 브로드캐스트
                 if (!this.roomId || !this.channel) return;
                 if (this.selectedCard) return;
+                // 게임 종료 후에는 카드 제출 불가
+                if (this._cachedRoom && this._cachedRoom.gameState === 'finished') return;
                 this.selectedCard = card;
                 const myPos = this.currentPlayer?.position;
                 if (!myPos) { this.selectedCard = null; return; }
@@ -1179,6 +1181,14 @@
                     btn.className = 'card-button';
                     btn.dataset.card = String(card);
                     btn.textContent = String(card);
+                    
+                    // 클릭 이벤트 리스너 추가
+                    btn.addEventListener('click', () => {
+                        if (!this.selectedCard && (this.gameState === 'playing' || this.gameState === 'game')) {
+                            this.playCard(card);
+                        }
+                    });
+                    
                     pad.appendChild(btn);
                 });
                 console.log('카드 패드 업데이트 완료 - 남은 카드:', sorted);
@@ -1292,23 +1302,28 @@
             }
             
             newGame() {
-                // 동일한 사람과 새 게임 시작 (방 재사용) - 멀티플레이 + AI 모두
-                if (!this._cachedRoom || !this.channel) return;
-                
-                // 게임 상태 초기화
-                const newRoom = {
-                    ...this._cachedRoom,
-                    cards: { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
-                    currentPlay: { player1: null, player2: null },
-                    scores: { player1: 0, player2: 0 },
-                    currentRound: 1,
-                    gameState: 'playing'
-                };
-                
-                this._cachedRoom = newRoom;
-                this.channel.publish('game-event', { type: 'state', room: newRoom });
-                this.updateGameDisplay(newRoom);
-                this.showStartHint();
+                // 새 게임 시작
+                if (this._cachedRoom && this._cachedRoom.isAIGame) {
+                    // AI 게임: 새 방 생성
+                    this.createAIGame();
+                } else if (this._cachedRoom && !this._cachedRoom.isAIGame) {
+                    // 멀티플레이: 기존 방에서 새 게임 시작
+                    if (!this.channel) return;
+                    
+                    const newRoom = {
+                        ...this._cachedRoom,
+                        cards: { player1: [1,2,3,4,5,6,7,8,9], player2: [1,2,3,4,5,6,7,8,9] },
+                        currentPlay: { player1: null, player2: null },
+                        scores: { player1: 0, player2: 0 },
+                        currentRound: 1,
+                        gameState: 'playing'
+                    };
+                    
+                    this._cachedRoom = newRoom;
+                    this.channel.publish('game-event', { type: 'state', room: newRoom });
+                    this.updateGameDisplay(newRoom);
+                    this.showStartHint();
+                }
             }
             
             backToLobby() {
@@ -1336,6 +1351,12 @@
                 this.currentPlayer = null;
                 this.selectedCard = null;
                 this.gameState = 'lobby';
+                this._cachedRoom = null;
+                this._lastCards = null;
+                this._lastCurrentPlay = null;
+                this._lastScores = null;
+                this._lastRound = null;
+                this.isHost = false;
                 
                 this.elements.createPlayerName.value = '';
                 this.elements.joinPlayerName.value = '';
