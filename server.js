@@ -10,7 +10,9 @@ const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // 정적 파일 서빙
@@ -484,7 +486,8 @@ function broadcastToRoom(roomId, message, excludePlayerId = null) {
 
 // 서버 시작
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`서버가 포트 ${PORT}에서 실행 중입니다`);
   console.log(`게임 사이트: http://localhost:${PORT}`);
+  console.log(`환경: ${process.env.NODE_ENV || 'development'}`);
 });
