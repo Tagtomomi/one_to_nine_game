@@ -1,17 +1,20 @@
 const express = require('express');
-const WebSocket = require('ws');
-const http = require('http');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 // 정적 파일 서빙
 app.use(express.static(path.join(__dirname, 'public')));
-
-// WebSocket 서버
-const wss = new WebSocket.Server({ server });
 
 // 게임 상태 저장 (메모리)
 const rooms = new Map();
@@ -229,13 +232,12 @@ function getGameResult(roomId) {
   };
 }
 
-// WebSocket 연결 처리
-wss.on('connection', (ws) => {
-  console.log('새로운 클라이언트 연결');
+// Socket.IO 연결 처리
+io.on('connection', (socket) => {
+  console.log('새로운 클라이언트 연결:', socket.id);
   
-  ws.on('message', (message) => {
+  socket.on('message', (data) => {
     try {
-      const data = JSON.parse(message);
       const { type, roomId, playerId, playerName, card } = data;
       
       switch (type) {
@@ -248,9 +250,9 @@ wss.on('connection', (ws) => {
           const createResult = joinRoom(newRoom.id, createPlayerId, createPlayerName);
           if (createResult) {
             const { room, player } = createResult;
-            players.set(createPlayerId, { ws, roomId: newRoom.id, player });
+            players.set(createPlayerId, { socket, roomId: newRoom.id, player });
             
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'room_created',
               roomId: newRoom.id,
               player: player,
@@ -258,7 +260,7 @@ wss.on('connection', (ws) => {
                 players: room.players,
                 gameState: room.gameState
               }
-            }));
+            });
           }
           break;
           
@@ -277,7 +279,7 @@ wss.on('connection', (ws) => {
             startGame(newAIRoom.id);
             const updatedRoom = rooms.get(newAIRoom.id);
             
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'ai_game_started',
               roomId: newAIRoom.id,
               player: player,
@@ -286,7 +288,7 @@ wss.on('connection', (ws) => {
                 gameState: updatedRoom.gameState,
                 isAIGame: true
               }
-            }));
+            });
           }
           break;
           
@@ -294,9 +296,9 @@ wss.on('connection', (ws) => {
           const joinResult = joinRoom(roomId, playerId, playerName);
           if (joinResult) {
             const { room, player } = joinResult;
-            players.set(playerId, { ws, roomId, player });
+            players.set(playerId, { socket, roomId, player });
             
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'joined_room',
               roomId: room.id,
               player: player,
@@ -304,7 +306,7 @@ wss.on('connection', (ws) => {
                 players: room.players,
                 gameState: room.gameState
               }
-            }));
+            });
             
             // 다른 플레이어들에게 새 플레이어 입장 알림
             broadcastToRoom(roomId, {
@@ -316,10 +318,10 @@ wss.on('connection', (ws) => {
               }
             }, playerId);
           } else {
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'join_failed',
               message: '방을 찾을 수 없거나 이미 가득참'
-            }));
+            });
           }
           break;
           
@@ -407,38 +409,38 @@ wss.on('connection', (ws) => {
               }
             }
           } else {
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'play_failed',
               message: '카드를 낼 수 없음'
-            }));
+            });
           }
           break;
           
         case 'get_room_status':
           const room = rooms.get(roomId);
           if (room) {
-            ws.send(JSON.stringify({
+            socket.emit('message', {
               type: 'room_status',
               room: room
-            }));
+            });
           }
           break;
       }
     } catch (error) {
       console.error('메시지 처리 오류:', error);
-      ws.send(JSON.stringify({
+      socket.emit('message', {
         type: 'error',
         message: '서버 오류가 발생했습니다'
-      }));
+      });
     }
   });
   
-  ws.on('close', () => {
-    console.log('클라이언트 연결 종료');
+  socket.on('disconnect', () => {
+    console.log('클라이언트 연결 종료:', socket.id);
     
-    // 연결된 모든 플레이어 중에서 해당 WebSocket을 찾아서 정리
+    // 연결된 모든 플레이어 중에서 해당 Socket을 찾아서 정리
     for (const [playerId, playerInfo] of players.entries()) {
-      if (playerInfo.ws === ws) {
+      if (playerInfo.socket === socket) {
         const { roomId } = playerInfo;
         players.delete(playerId);
         
@@ -474,8 +476,8 @@ function broadcastToRoom(roomId, message, excludePlayerId = null) {
     if (excludePlayerId && player.id === excludePlayerId) return;
     
     const playerInfo = players.get(player.id);
-    if (playerInfo && playerInfo.ws.readyState === WebSocket.OPEN) {
-      playerInfo.ws.send(JSON.stringify(message));
+    if (playerInfo && playerInfo.socket.connected) {
+      playerInfo.socket.emit('message', message);
     }
   });
 }

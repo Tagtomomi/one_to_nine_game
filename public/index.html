@@ -679,30 +679,40 @@
             }
             
             connectWebSocket() {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}`;
+                // Socket.IO 클라이언트 라이브러리 로드
+                if (typeof io === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+                    script.onload = () => {
+                        this.initializeSocket();
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    this.initializeSocket();
+                }
+            }
+            
+            initializeSocket() {
+                this.socket = io();
                 
-                this.ws = new WebSocket(wsUrl);
-                
-                this.ws.onopen = () => {
-                    console.log('WebSocket 연결됨');
+                this.socket.on('connect', () => {
+                    console.log('Socket.IO 연결됨');
                     this.showMessage('서버에 연결되었습니다', 'success');
-                };
+                });
                 
-                this.ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
+                this.socket.on('message', (data) => {
                     this.handleMessage(data);
-                };
+                });
                 
-                this.ws.onclose = () => {
-                    console.log('WebSocket 연결 종료');
+                this.socket.on('disconnect', () => {
+                    console.log('Socket.IO 연결 종료');
                     this.showMessage('서버 연결이 끊어졌습니다', 'error');
-                };
+                });
                 
-                this.ws.onerror = (error) => {
-                    console.error('WebSocket 오류:', error);
+                this.socket.on('connect_error', (error) => {
+                    console.error('Socket.IO 오류:', error);
                     this.showMessage('서버 연결 오류', 'error');
-                };
+                });
             }
             
             handleMessage(data) {
@@ -1184,8 +1194,8 @@
             }
             
             sendMessage(message) {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify(message));
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit('message', message);
                 }
             }
             
