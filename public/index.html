@@ -387,13 +387,33 @@
                 font-size: 2em;
             }
             
+            /* 상단 점수판: 모바일에서도 가로 배치 */
             .game-info {
-                flex-direction: column;
-                gap: 20px;
+                flex-direction: row;
+                gap: 10px;
+                align-items: center;
             }
+            .score h3 { font-size: 0.95em; }
+            .score .number { font-size: 1.6em; }
+            .round-number { font-size: 1.2em; }
             
-            .play-cards {
-                gap: 20px;
+            .play-cards { gap: 12px; }
+            .play-card { width: 68px; height: 86px; font-size: 26px; }
+            
+            /* 카드 패드: 2줄 그리드 */
+            .card-pad {
+                display: grid;
+                grid-template-columns: repeat(5, minmax(44px, 1fr));
+                gap: 10px;
+                justify-items: center;
+                align-items: center;
+                padding: 6px 0;
+            }
+            .card-button {
+                width: 56px;
+                height: 72px;
+                font-size: 22px;
+                border-width: 2px;
             }
             
             .final-scores {
@@ -762,6 +782,14 @@
                     // Ably-only 상태 동기화
                     case 'state':
                         if (data.room) {
+                            this._cachedRoom = data.room;
+                            this._lastCards = data.room.cards;
+                            this._lastCurrentPlay = data.room.currentPlay;
+                            this._lastScores = data.room.scores;
+                            this._lastRound = data.room.currentRound;
+                            // 내 포지션 동기화
+                            const me = data.room.players.find(p => p.id === this.playerId);
+                            if (me) this.currentPlayer = me;
                             this.updateGameDisplay(data.room);
                         }
                         break;
@@ -1004,8 +1032,8 @@
                 s.currentPlay[myPos] = card;
                 s.cards[myPos] = s.cards[myPos].filter(c => c !== card);
 
-                // AI 턴 (간단 랜덤)
-                if (s.currentPlay.player2 === null && myPos === 'player1') {
+                // AI 턴: 멀티플레이에서는 금지
+                if (s.isAIGame && s.currentPlay.player2 === null && myPos === 'player1') {
                     const avail = s.cards.player2;
                     const aiCard = avail[Math.floor(Math.random() * avail.length)];
                     s.currentPlay.player2 = aiCard;
