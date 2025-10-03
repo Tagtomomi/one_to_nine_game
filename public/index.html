@@ -181,41 +181,86 @@
             font-weight: bold;
         }
 
-        .cards-container {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin: 30px 0;
-            flex-wrap: wrap;
+        /* 게임 진행 상태 문구 */
+        .status-bar {
+            margin: 16px 0;
+            padding: 12px 16px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            color: #e0e0e0;
+            text-align: center;
         }
 
-        .card {
-            width: 60px;
-            height: 80px;
-            background: linear-gradient(45deg, #333, #555);
-            border: 2px solid #666;
+        /* 새로운 카드 패드 스타일 */
+        .card-pad-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+        }
+
+        .card-pad {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin: 0 auto;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 6px 0;
+        }
+
+        .card-button {
+            width: 64px;
+            height: 84px;
+            background: linear-gradient(45deg, #2a2a2a, #4a4a4a);
+            border: 3px solid #555;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
-            color: #fff;
+            color: #00ffff;
             cursor: pointer;
             transition: all 0.3s ease;
+            user-select: none;
         }
 
-        .card:hover {
-            background: linear-gradient(45deg, #00ffff, #0080ff);
-            color: #000;
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+        .card-button:hover {
+            background: linear-gradient(45deg, #3a3a3a, #5a5a5a);
+            border-color: #00ffff;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
         }
 
-        .card.selected {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            color: #fff;
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        .card-button:active {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 255, 255, 0.5);
+        }
+
+        .card-button.used {
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            border-color: #333;
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.3;
+            transform: none;
+        }
+
+        .card-button.used:hover {
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            border-color: #333;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 기존 카드 스타일 숨김 */
+        .cards-container {
+            display: none;
+        }
+
+        .card {
+            display: none;
         }
 
         .current-play {
@@ -400,10 +445,18 @@
                 </div>
 
                 <div id="aiGameForm" style="display: none;">
-                    <h3 style="margin-bottom: 20px; color: #e0e0e0;">AI와 대전</h3>
+                    <h3 style="margin-bottom: 20px; color: #e0e0e0;">🤖 AI와 대전</h3>
                     <div class="form-group">
                         <label for="aiPlayerName">플레이어 이름:</label>
                         <input type="text" id="aiPlayerName" placeholder="이름을 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="aiDifficulty">AI 난이도:</label>
+                        <select id="aiDifficulty" style="width: 100%; padding: 12px; background: #222; border: 2px solid #444; color: #fff; font-size: 16px;">
+                            <option value="easy">🟢 쉬움 - 완전 랜덤</option>
+                            <option value="normal" selected>🟡 보통 - 약간의 전략</option>
+                            <option value="hard">🔴 어려움 - 똑똑한 전략</option>
+                        </select>
                     </div>
                     <button id="createAIGameBtn" class="btn">AI 게임 시작</button>
                     <button id="backToSelection3" class="btn" style="background: #666;">돌아가기</button>
@@ -432,7 +485,7 @@
             <div class="game-area">
                 <div class="game-info">
                     <div class="score">
-                        <h3>플레이어 1</h3>
+                        <h3 id="player1Name">플레이어 1</h3>
                         <div class="number" id="player1Score">0</div>
                     </div>
                     <div class="round-info">
@@ -440,7 +493,7 @@
                         <div class="round-number" id="currentRound">1</div>
                     </div>
                     <div class="score">
-                        <h3>플레이어 2</h3>
+                        <h3 id="player2Name">플레이어 2</h3>
                         <div class="number" id="player2Score">0</div>
                     </div>
                 </div>
@@ -455,12 +508,29 @@
                     </div>
                 </div>
 
+                <!-- 게임 진행 상태 -->
+                <div class="status-bar" id="gameStatus" style="display:none">게임을 시작합니다</div>
+
                 <div class="round-result" id="roundResult" style="display: none;">
                     <h4>라운드 결과</h4>
                     <div class="reason" id="roundReason"></div>
                 </div>
 
-                <div class="cards-container" id="cardsContainer"></div>
+                <!-- 새로운 카드 패드 -->
+                <div class="card-pad-section">
+                    <h3 style="color: #e0e0e0; margin-bottom: 20px; text-align: center;">내 카드</h3>
+                    <div class="card-pad" id="cardPad">
+                        <div class="card-button" data-card="1">1</div>
+                        <div class="card-button" data-card="2">2</div>
+                        <div class="card-button" data-card="3">3</div>
+                        <div class="card-button" data-card="4">4</div>
+                        <div class="card-button" data-card="5">5</div>
+                        <div class="card-button" data-card="6">6</div>
+                        <div class="card-button" data-card="7">7</div>
+                        <div class="card-button" data-card="8">8</div>
+                        <div class="card-button" data-card="9">9</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -480,6 +550,14 @@
                 </div>
                 <button id="newGameBtn" class="btn">새 게임</button>
                 <button id="backToLobbyBtn" class="btn" style="background: #666;">로비로</button>
+            </div>
+        </div>
+
+        <!-- 풀스크린 안내/결과 모달 -->
+        <div id="roundModal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center;">
+            <div style="background:#111; border:2px solid #444; padding:24px 32px; color:#fff; min-width:260px; text-align:center;">
+                <div id="roundModalText" style="font-size:22px; font-weight:bold; color:#00ffff;">안내</div>
+                <div id="roundModalSub" style="margin-top:8px; color:#ccc; font-size:14px;"></div>
             </div>
         </div>
 
@@ -522,6 +600,7 @@
                     createPlayerName: document.getElementById('createPlayerName'),
                     joinPlayerName: document.getElementById('joinPlayerName'),
                     aiPlayerName: document.getElementById('aiPlayerName'),
+                    aiDifficulty: document.getElementById('aiDifficulty'),
                     roomCode: document.getElementById('roomCode'),
                     
                     // 버튼들
@@ -541,18 +620,25 @@
                     // 게임 요소들
                     displayRoomCode: document.getElementById('displayRoomCode'),
                     playersList: document.getElementById('playersList'),
+                    player1Name: document.getElementById('player1Name'),
                     player1Score: document.getElementById('player1Score'),
                     player2Score: document.getElementById('player2Score'),
+                    player2Name: document.getElementById('player2Name'),
                     currentRound: document.getElementById('currentRound'),
                     player1Card: document.getElementById('player1Card'),
                     player2Card: document.getElementById('player2Card'),
                     roundResult: document.getElementById('roundResult'),
                     roundReason: document.getElementById('roundReason'),
                     cardsContainer: document.getElementById('cardsContainer'),
+                    cardPad: document.getElementById('cardPad'),
                     gameResultTitle: document.getElementById('gameResultTitle'),
                     finalPlayer1Score: document.getElementById('finalPlayer1Score'),
                     finalPlayer2Score: document.getElementById('finalPlayer2Score'),
-                    messageArea: document.getElementById('messageArea')
+                    messageArea: document.getElementById('messageArea'),
+                    gameStatus: document.getElementById('gameStatus'),
+                    roundModal: document.getElementById('roundModal'),
+                    roundModalText: document.getElementById('roundModalText'),
+                    roundModalSub: document.getElementById('roundModalSub')
                 };
             }
             
@@ -566,6 +652,14 @@
                 this.elements.createRoomBtn.addEventListener('click', () => this.createRoom());
                 this.elements.joinRoomBtn.addEventListener('click', () => this.joinRoom());
                 this.elements.createAIGameBtn.addEventListener('click', () => this.createAIGame());
+                
+                // 카드 패드 이벤트 리스너
+                this.elements.cardPad.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('card-button') && !e.target.classList.contains('used')) {
+                        const cardValue = parseInt(e.target.dataset.card);
+                        this.playCard(cardValue);
+                    }
+                });
                 
                 // 돌아가기 버튼들
                 this.elements.backToSelection.addEventListener('click', () => this.showInitialSelection());
@@ -653,14 +747,21 @@
                         this.playerId = data.playerId || this.generatePlayerId();
                         this.roomId = data.roomId;
                         this.currentPlayer = data.player;
+                        this.gameState = 'playing'; // 게임 상태 명시적 설정
                         this.showScreen('game');
                         console.log('현재 플레이어:', this.currentPlayer);
                         console.log('방 데이터:', data.room);
                         this.updateGameDisplay(data.room);
+                        this.showStartHint();
+                        this.updatePlayerNames(data.room.players); // 이름 즉시 반영
                         this.showMessage('AI와의 게임이 시작되었습니다!', 'success');
                         setTimeout(() => {
                             console.log('카드 강제 업데이트 시도');
                             this.updateCardsDisplay(data.room.cards);
+                            // 추가 디버깅
+                            console.log('카드 컨테이너 요소:', this.elements.cardsContainer);
+                            console.log('카드 컨테이너 표시 상태:', window.getComputedStyle(this.elements.cardsContainer).display);
+                            console.log('카드 컨테이너 자식 요소 수:', this.elements.cardsContainer.children.length);
                         }, 100);
                         break;
                         
@@ -681,6 +782,7 @@
                     case 'game_started':
                         this.showScreen('game');
                         this.updateGameDisplay(data.room);
+                        this.showStartHint();
                         this.showMessage('게임이 시작되었습니다!', 'success');
                         break;
                         
@@ -696,6 +798,7 @@
                         this.updateScores(data.scores);
                         this.updateRound(data.currentRound);
                         this.showRoundResult(data.result);
+                        this.updateStatusOnRoundResult(data.result);
                         break;
                         
                     case 'game_finished':
@@ -716,6 +819,16 @@
                 });
                 document.getElementById(screen).classList.add('active');
                 this.gameState = screen;
+                
+                // 게임 화면일 때 카드 패드 강제 표시
+                if (screen === 'game') {
+                    const cardPadSection = document.querySelector('.card-pad-section');
+                    if (cardPadSection) {
+                        cardPadSection.style.display = 'block';
+                        cardPadSection.style.visibility = 'visible';
+                        console.log('게임 화면 표시 - 카드 패드 강제 표시');
+                    }
+                }
             }
             
             showInitialSelection() {
@@ -822,6 +935,8 @@
             
             async createAIGame() {
                 const playerName = this.elements.aiPlayerName.value.trim();
+                const difficulty = this.elements.aiDifficulty.value;
+                
                 if (!playerName) {
                     this.showMessage('플레이어 이름을 입력하세요', 'error');
                     return;
@@ -837,7 +952,8 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             playerId: this.playerId,
-                            playerName: playerName
+                            playerName: playerName,
+                            difficulty: difficulty
                         })
                     });
                     const data = await response.json();
@@ -846,6 +962,16 @@
                         this.currentPlayer = data.player;
                         this.subscribeToRoom(this.roomId);
                         this.handleMessage(data);
+                        
+                        // 난이도 정보 표시
+                        const difficultyNames = {
+                            'easy': '쉬움',
+                            'normal': '보통',
+                            'hard': '어려움'
+                        };
+                        this.showMessage(`AI 난이도: ${difficultyNames[difficulty]}`, 'success');
+                    } else {
+                        this.showMessage('AI 게임 생성 실패', 'error');
                     }
                 } catch (error) {
                     console.error('AI 게임 생성 오류:', error);
@@ -873,23 +999,38 @@
             }
             
             async playCard(card) {
-                if (this.selectedCard) return;
+                console.log('playCard 호출됨:', { card, selectedCard: this.selectedCard, roomId: this.roomId, playerId: this.playerId });
+                
+                if (this.selectedCard) {
+                    console.log('이미 카드를 선택함:', this.selectedCard);
+                    return;
+                }
                 
                 this.selectedCard = card;
                 try {
+                    const requestData = {
+                        roomId: this.roomId,
+                        playerId: this.playerId,
+                        card: card
+                    };
+                    console.log('카드 플레이 요청:', requestData);
+                    
                     const response = await fetch('/game/play_card', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            roomId: this.roomId,
-                            playerId: this.playerId,
-                            card: card
-                        })
+                        body: JSON.stringify(requestData)
                     });
+                    
+                    console.log('응답 상태:', response.status);
                     const data = await response.json();
+                    console.log('응답 데이터:', data);
+                    
                     if (!data.success) {
-                        this.showMessage('카드 플레이 실패', 'error');
+                        console.log('카드 플레이 실패:', data.message);
+                        this.showMessage(`카드 플레이 실패: ${data.message || '알 수 없는 오류'}`, 'error');
                         this.selectedCard = null;
+                    } else {
+                        console.log('카드 플레이 성공');
                     }
                 } catch (error) {
                     console.error('카드 플레이 오류:', error);
@@ -924,6 +1065,25 @@
                 this.updateRound(room.currentRound);
                 this.updateCurrentPlay(room.currentPlay);
                 this.updateCardsDisplay(room.cards);
+                this.updatePlayerNames(room.players);
+            }
+            
+            updatePlayerNames(players) {
+                console.log('updatePlayerNames 호출', { players, playerId: this.playerId, currentPlayer: this.currentPlayer });
+                if (players && players.length >= 2) {
+                    const p1 = players.find(p => p.position === 'player1') || players[0];
+                    const p2 = players.find(p => p.position === 'player2') || players[1];
+                    if (this.elements.player1Name) {
+                        this.elements.player1Name.textContent = p1?.name || this.playerName || '플레이어 1';
+                    }
+                    if (this.elements.player2Name) {
+                        this.elements.player2Name.textContent = (p2 && p2.id === 'ai_player') ? 'AI🤖' : (p2?.name || '플레이어 2');
+                    }
+                } else {
+                    // 폴백: 클라이언트 보유 이름 사용
+                    if (this.elements.player1Name) this.elements.player1Name.textContent = this.playerName || '플레이어 1';
+                    if (this.elements.player2Name) this.elements.player2Name.textContent = 'AI🤖';
+                }
             }
             
             updateScores(scores) {
@@ -936,52 +1096,149 @@
             }
             
             updateCurrentPlay(currentPlay) {
-                this.elements.player1Card.textContent = currentPlay.player1 || '-';
-                this.elements.player2Card.textContent = currentPlay.player2 || '-';
-                
-                this.elements.player1Card.className = 'play-card' + (currentPlay.player1 ? ' played' : '');
-                this.elements.player2Card.className = 'play-card' + (currentPlay.player2 ? ' played' : '');
+                // 내 카드만 보여주고, 상대 카드는 항상 '-' 로 가린다
+                const myPos = this.currentPlayer?.position;
+                const oppPos = myPos === 'player1' ? 'player2' : 'player1';
+
+                // 내 카드 표시
+                this.elements[myPos + 'Card'].textContent = currentPlay[myPos] || '-';
+                this.elements[myPos + 'Card'].className = 'play-card' + (currentPlay[myPos] ? ' played' : '');
+
+                // 상대 카드 비공개 처리
+                this.elements[oppPos + 'Card'].textContent = '-';
+                this.elements[oppPos + 'Card'].className = 'play-card';
             }
             
             updateCardsDisplay(cards) {
-                console.log('updateCardsDisplay 호출됨:', { cards, currentPlayer: this.currentPlayer });
-                const container = this.elements.cardsContainer;
-                container.innerHTML = '';
+                console.log('updateCardsDisplay 호출됨:', { 
+                    cards, 
+                    currentPlayer: this.currentPlayer, 
+                    gameState: this.gameState
+                });
+                
                 const playerPosition = this.currentPlayer?.position;
                 console.log('플레이어 위치:', playerPosition);
+                
                 if (!playerPosition) {
                     console.log('플레이어 위치가 없음');
                     return;
                 }
+                
                 if (!cards || !cards[playerPosition]) {
                     console.log('카드 데이터가 없음:', { cards, playerPosition });
                     return;
                 }
-                console.log('카드 표시 시작:', { playerPosition, availableCards: cards[playerPosition] });
-                cards[playerPosition].forEach(card => {
-                    const cardElement = document.createElement('div');
-                    cardElement.className = 'card';
-                    cardElement.textContent = card;
-                    if (this.selectedCard === card) {
-                        cardElement.classList.add('selected');
-                    }
-                    cardElement.addEventListener('click', () => {
-                        if (!this.selectedCard && this.gameState === 'playing') {
-                            this.playCard(card);
-                        }
-                    });
-                    container.appendChild(cardElement);
+                
+                console.log('사용 가능한 카드:', cards[playerPosition]);
+                
+                // 카드 패드 업데이트
+                this.updateCardPad(cards[playerPosition]);
+            }
+
+            updateCardPad(availableCards) {
+                // 사용 가능한 카드만 일렬로 다시 그림 (사용한 카드는 아예 제거)
+                const pad = this.elements.cardPad;
+                if (!pad) return;
+                pad.innerHTML = '';
+                const sorted = [...availableCards].sort((a,b) => a - b);
+                sorted.forEach(card => {
+                    const btn = document.createElement('div');
+                    btn.className = 'card-button';
+                    btn.dataset.card = String(card);
+                    btn.textContent = String(card);
+                    pad.appendChild(btn);
                 });
-                console.log('카드 표시 완료, 총 카드 수:', cards[playerPosition].length);
+                console.log('카드 패드 업데이트 완료 - 남은 카드:', sorted);
             }
             
             showRoundResult(result) {
-                this.elements.roundResult.style.display = 'block';
-                this.elements.roundReason.textContent = `${result.player1Card} vs ${result.player2Card} - ${result.reason}`;
-                
-                setTimeout(() => {
-                    this.elements.roundResult.style.display = 'none';
-                }, 3000);
+                // 이름 가져오기
+                const name1 = this.elements.player1Name ? this.elements.player1Name.textContent : '플레이어 1';
+                const name2 = this.elements.player2Name ? this.elements.player2Name.textContent : '플레이어 2';
+
+                const winnerText = result.winner === 'tie' ? '무승부' : (result.winner === 'player1' ? `${name1} 승!` : `${name2} 승!`);
+                this.elements.roundReason.textContent = winnerText;
+
+                // 팝업: 승패 안내 → 3,2,1 → 다음 카드를 내주세요
+                const steps = [
+                    { title: winnerText, sub: '' },
+                    { title: '3', sub: '' },
+                    { title: '2', sub: '' },
+                    { title: '1', sub: '' },
+                    { title: '다음 카드를 내주세요', sub: '' }
+                ];
+                let idx = 0;
+                const run = () => {
+                    const s = steps[idx];
+                    // 마지막 단계에서 이전 카드 표시를 지움
+                    if (idx === steps.length - 1) {
+                        this.clearCurrentPlay();
+                    }
+                    this.elements.roundModalText.textContent = s.title;
+                    this.elements.roundModalSub.textContent = s.sub;
+                    this.elements.roundModal.style.display = 'flex';
+                    idx++;
+                    if (idx < steps.length) {
+                        setTimeout(run, 600);
+                    } else {
+                        setTimeout(() => { this.elements.roundModal.style.display = 'none'; }, 600);
+                    }
+                };
+                run();
+            }
+
+            clearCurrentPlay() {
+                if (this.elements.player1Card) {
+                    this.elements.player1Card.textContent = '-';
+                    this.elements.player1Card.className = 'play-card';
+                }
+                if (this.elements.player2Card) {
+                    this.elements.player2Card.textContent = '-';
+                    this.elements.player2Card.className = 'play-card';
+                }
+            }
+
+            setGameStatus(text) {
+                if (this.elements.gameStatus) {
+                    this.elements.gameStatus.textContent = text;
+                }
+            }
+
+            showStartHint() {
+                // 시작 안내 팝업 시퀀스
+                const steps = [
+                    { title: '게임을 시작합니다!', sub: '' },
+                    { title: '하나의 숫자 카드를 선택해주세요', sub: '' }
+                ];
+                let i = 0;
+                const run = () => {
+                    const s = steps[i];
+                    this.elements.roundModalText.textContent = s.title;
+                    this.elements.roundModalSub.textContent = s.sub;
+                    this.elements.roundModal.style.display = 'flex';
+                    i++;
+                    if (i < steps.length) {
+                        setTimeout(run, 700);
+                    } else {
+                        setTimeout(() => { this.elements.roundModal.style.display = 'none'; }, 900);
+                    }
+                };
+                run();
+            }
+
+            updateStatusOnRoundResult(result) {
+                if (!this.elements.gameStatus) return;
+                if (result.winner === 'tie') {
+                    this.setGameStatus('결과는 무승부 입니다');
+                } else {
+                    const iAmP1 = this.currentPlayer?.position === 'player1';
+                    const didIWin = (iAmP1 && result.winner === 'player1') || (!iAmP1 && result.winner === 'player2');
+                    if (didIWin) {
+                        this.setGameStatus('승리했습니다!');
+                    } else {
+                        this.setGameStatus('패배입니다. 상대방이 더 큰 수를 냈습니다.');
+                    }
+                }
             }
             
             updateGameResult(result) {

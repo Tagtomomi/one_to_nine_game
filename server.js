@@ -33,15 +33,64 @@ const players = new Map();
 // AI 플레이어 클래스
 class AIPlayer {
   constructor() {
-    this.name = 'AI';
+    this.name = 'AI🤖';
     this.id = 'ai_player';
     this.position = 'player2';
+    this.difficulty = 'normal'; // easy, normal, hard
   }
   
   chooseCard(availableCards) {
     if (availableCards.length === 0) return null;
+    
+    // 난이도별 전략
+    switch (this.difficulty) {
+      case 'easy':
+        return this.easyStrategy(availableCards);
+      case 'hard':
+        return this.hardStrategy(availableCards);
+      default: // normal
+        return this.normalStrategy(availableCards);
+    }
+  }
+  
+  // 쉬운 난이도: 완전 랜덤
+  easyStrategy(availableCards) {
     const randomIndex = Math.floor(Math.random() * availableCards.length);
     return availableCards[randomIndex];
+  }
+  
+  // 보통 난이도: 약간의 전략 (랜덤 + 약간의 생각)
+  normalStrategy(availableCards) {
+    // 70% 확률로 랜덤, 30% 확률로 약간의 전략
+    if (Math.random() < 0.7) {
+      return this.easyStrategy(availableCards);
+    }
+    
+    // 약간의 전략: 중간값 근처 카드 선호
+    const sortedCards = [...availableCards].sort((a, b) => a - b);
+    const middleIndex = Math.floor(sortedCards.length / 2);
+    const preferredCards = sortedCards.slice(
+      Math.max(0, middleIndex - 1), 
+      Math.min(sortedCards.length, middleIndex + 2)
+    );
+    
+    const randomIndex = Math.floor(Math.random() * preferredCards.length);
+    return preferredCards[randomIndex];
+  }
+  
+  // 어려운 난이도: 더 똑똑한 전략
+  hardStrategy(availableCards) {
+    // 50% 확률로 랜덤, 50% 확률로 전략적 선택
+    if (Math.random() < 0.5) {
+      return this.easyStrategy(availableCards);
+    }
+    
+    // 전략적 선택: 높은 카드 선호 (9, 8, 7 순서)
+    const sortedCards = [...availableCards].sort((a, b) => b - a);
+    const topCards = sortedCards.slice(0, Math.min(3, sortedCards.length));
+    
+    const randomIndex = Math.floor(Math.random() * topCards.length);
+    return topCards[randomIndex];
   }
 }
 
@@ -112,20 +161,44 @@ function startGame(roomId) {
 }
 
 function playCard(roomId, playerId, card) {
+  console.log('playCard 호출됨:', { roomId, playerId, card });
+  
   const room = rooms.get(roomId);
-  if (!room || room.gameState !== 'playing') return false;
+  if (!room) {
+    console.log('방을 찾을 수 없음:', roomId);
+    return false;
+  }
+  
+  if (room.gameState !== 'playing') {
+    console.log('게임 상태가 playing이 아님:', room.gameState);
+    return false;
+  }
   
   const player = room.players.find(p => p.id === playerId);
-  if (!player) return false;
+  if (!player) {
+    console.log('플레이어를 찾을 수 없음:', playerId);
+    console.log('방의 플레이어들:', room.players.map(p => ({ id: p.id, name: p.name, position: p.position })));
+    return false;
+  }
   
   const playerPosition = player.position;
+  console.log('플레이어 위치:', playerPosition);
+  console.log('사용 가능한 카드:', room.cards[playerPosition]);
   
-  if (!room.cards[playerPosition].includes(card)) return false;
-  if (room.currentPlay[playerPosition] !== null) return false;
+  if (!room.cards[playerPosition].includes(card)) {
+    console.log('카드가 사용 가능한 카드에 없음:', card);
+    return false;
+  }
+  
+  if (room.currentPlay[playerPosition] !== null) {
+    console.log('이미 카드를 냄:', room.currentPlay[playerPosition]);
+    return false;
+  }
   
   room.currentPlay[playerPosition] = card;
   room.cards[playerPosition] = room.cards[playerPosition].filter(c => c !== card);
   
+  console.log('카드 플레이 성공:', { card, playerPosition, remainingCards: room.cards[playerPosition] });
   return true;
 }
 
@@ -297,23 +370,36 @@ app.post('/game/:action', (req, res) => {
         const newAIRoom = createRoom(true);
         const createAIPlayerId = playerId || uuidv4();
         const createAIPlayerName = playerName || '플레이어';
+        const { difficulty = 'normal' } = req.body; // 난이도 받기
         
         const createAIResult = joinRoom(newAIRoom.id, createAIPlayerId, createAIPlayerName);
         if (createAIResult) {
           const { room, player } = createAIResult;
           players.set(createAIPlayerId, { roomId: newAIRoom.id, player });
           
+          // AI 난이도 설정
+          if (room.aiPlayer) {
+            room.aiPlayer.difficulty = difficulty;
+          }
+          
           startGame(newAIRoom.id);
           const updatedRoom = rooms.get(newAIRoom.id);
           
           res.json({
             success: true,
+            type: 'ai_game_started',
+            playerId: createAIPlayerId,
             roomId: newAIRoom.id,
             player: player,
             room: {
               players: updatedRoom.players,
               gameState: updatedRoom.gameState,
-              isAIGame: true
+              scores: updatedRoom.scores,
+              currentRound: updatedRoom.currentRound,
+              currentPlay: updatedRoom.currentPlay,
+              cards: updatedRoom.cards,
+              isAIGame: true,
+              aiDifficulty: difficulty
             }
           });
         } else {
