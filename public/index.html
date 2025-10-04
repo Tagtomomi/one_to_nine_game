@@ -82,6 +82,16 @@
             border: 2px solid #333;
         }
 
+        .rules-header {
+            padding: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .rules-header:hover {
+            background: rgba(0, 255, 255, 0.1);
+        }
+
         .rules-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -497,7 +507,7 @@
             
             .game-rules {
                 margin: 20px 0;
-                padding: 15px;
+                padding: 0px;
             }
             
             .rules-container {
@@ -548,9 +558,38 @@
             }
         }
     </style>
-    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+        <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 </head>
 <body>
+    <script>
+        // 게임 규칙 토글 함수
+        function toggleRules() {
+            const container = document.getElementById('rulesContainer');
+            const toggle = document.getElementById('rulesToggle');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                toggle.textContent = '▲';
+                toggle.style.transform = 'rotate(180deg)';
+            } else {
+                container.style.display = 'none';
+                toggle.textContent = '▼';
+                toggle.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // 게임 화면 진입 시 규칙 닫기
+        function closeRulesOnGameStart() {
+            const container = document.getElementById('rulesContainer');
+            const toggle = document.getElementById('rulesToggle');
+            
+            if (container && toggle) {
+                container.style.display = 'none';
+                toggle.textContent = '▼';
+                toggle.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
     <div class="container">
         <div class="header">
             <div class="header-content">
@@ -618,8 +657,11 @@
 
         <!-- 게임 룰 설명 -->
         <div class="game-rules">
-            <h3 style="color: #00ffff; text-align: center; margin-bottom: 20px;">🎯 게임 룰</h3>
-            <div class="rules-container">
+            <div class="rules-header" onclick="toggleRules()" style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <h3 style="color: #00ffff; margin: 0;">🎯 게임 룰</h3>
+                <span id="rulesToggle" style="color: #00ffff; font-size: 20px; transition: transform 0.3s ease;">▼</span>
+            </div>
+            <div class="rules-container" id="rulesContainer" style="display: none;">
                 <div class="rule-section">
                     <h4 style="color: #ff6b6b;">📋 기본 규칙</h4>
                     <ul>
@@ -1093,6 +1135,11 @@
                     } else {
                         this.elements.exitGameBtn.style.display = 'none';
                     }
+                }
+                
+                // 게임 화면 진입 시 규칙 자동 닫기
+                if (screen === 'game' || screen === 'waiting' || screen === 'finished') {
+                    closeRulesOnGameStart();
                 }
                 
                 // 게임 화면일 때 카드 패드 강제 표시
